@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Entregas – Matías</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green:      #22C55E;
+    --green-dark: #16A34A;
+    --green-bg:   #F0FDF4;
+    --bg:         #0F172A;
+    --surface:    #1E293B;
+    --text:       #F8FAFC;
+    --muted:      #94A3B8;
+    --border:     #E2E8F0;
+  }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex; justify-content: center;
+    padding: 24px 16px 40px;
+  }
+  .card {
+    background: #fff; color: #0F172A;
+    border-radius: 20px; width: 100%; max-width: 420px;
+    overflow: visible;
+  }
+  .card-header {
+    background: var(--bg); padding: 18px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-radius: 20px 20px 0 0;
+  }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; color: var(--text); }
+  .logo-icon { width: 28px; height: 28px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .avatar-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--surface); display: flex;
+    align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer;
+    border: 2px solid #334155; overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .avatar-btn:hover { border-color: var(--green); }
+
+  /* Stats */
+  .stats-bar { background: var(--bg); padding: 0 20px 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .stat { background: var(--surface); border-radius: 10px; padding: 10px 12px; text-align: center; }
+  .stat .num { font-size: 20px; font-weight: 700; color: var(--text); }
+  .stat .num.green { color: var(--green); }
+  .stat .num.amber { color: #FBBF24; }
+  .stat .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Mapa */
+  .map-section { border-bottom: 1px solid #E2E8F0; }
+  .map-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px 8px;
+  }
+  .map-header h3 { font-size: 13px; font-weight: 600; color: #0F172A; }
+  .map-toggle {
+    display: flex; background: #F1F5F9; border-radius: 8px; padding: 2px;
+  }
+  .map-toggle button {
+    font-size: 11px; font-weight: 500; padding: 4px 10px;
+    border-radius: 6px; border: none; background: none;
+    font-family: 'Inter', sans-serif; color: #64748B; cursor: pointer;
+  }
+  .map-toggle button.active { background: #fff; color: #0F172A; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  #mapa { height: 220px; width: 100%; display: block; background: #E2E8F0; }
+  .map-leyenda {
+    display: flex; gap: 10px; padding: 8px 16px;
+    flex-wrap: wrap;
+  }
+  .leyenda-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #64748B; }
+  .leyenda-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* Pedidos */
+  .zone-section { background: #fff; }
+  .zone-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 8px; border-top: 1px solid #F1F5F9; }
+  .zone-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #0F172A; }
+  .zone-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .zone-badge { font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 20px; }
+  .badge-pending { background: #FEF3C7; color: #92400E; }
+  .badge-done    { background: #DCFCE7; color: #166534; }
+
+  .order-card { margin: 0 12px 8px; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 14px; transition: all 0.2s; }
+  .order-card.delivered { background: #F8FAFC; border-color: #E2E8F0; opacity: 0.7; }
+  .order-card.active    { border-color: var(--green); background: #F0FDF4; }
+  .order-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .order-id   { font-size: 10px; font-weight: 600; color: #94A3B8; margin-bottom: 2px; }
+  .order-name { font-size: 14px; font-weight: 600; color: #0F172A; }
+  .order-card.delivered .order-name { color: #94A3B8; text-decoration: line-through; }
+  .zone-pill  { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+  .zona-a { background: #DCFCE7; color: #166534; }
+  .zona-b { background: #DBEAFE; color: #1E40AF; }
+  .zona-c { background: #EDE9FE; color: #5B21B6; }
+  .order-address { font-size: 12px; color: #64748B; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .order-actions { display: flex; align-items: center; gap: 8px; }
+  .action-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #E2E8F0; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; transition: all 0.15s; }
+  .action-btn:hover { border-color: var(--green); background: var(--green-bg); }
+  .btn-entregar  { margin-left: auto; background: var(--green); color: #fff; border: none; border-radius: 20px; padding: 7px 14px; font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.15s; }
+  .btn-entregar:hover  { background: var(--green-dark); }
+  .btn-entregado { margin-left: auto; background: #E2E8F0; color: #94A3B8; border: none; border-radius: 20px; padding: 7px 14px; font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: default; display: flex; align-items: center; gap: 5px; }
+
+  /* Nav */
+  .refresh-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px 20px 4px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 10px; padding: 10px; font-size: 12px; color: #64748B; cursor: pointer; transition: all 0.15s; }
+  .refresh-btn:hover { border-color: var(--green); color: var(--green); }
+  .bottom-nav { background: #fff; border-top: 1px solid #E2E8F0; padding: 12px 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 8px; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+  .nav-item:hover { background: #F1F5F9; }
+  .nav-item.active { color: var(--green); }
+  .nav-item .nav-icon { font-size: 20px; }
+  .nav-item .nav-lbl { font-size: 10px; font-weight: 500; color: #64748B; }
+  .nav-item.active .nav-lbl { color: var(--green); }
+
+  .toast { display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #0F172A; color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 999; border: 1px solid var(--green); white-space: nowrap; }
+  .toast.show { display: flex; gap: 8px; align-items: center; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <div class="logo">
+      <div class="logo-icon">🚲</div>
+      Mis Entregas – Matías
+    </div>
+    <button class="avatar-btn" onclick="abrirModalPerfil()" title="Mi perfil">🧑</button>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat"><div class="num" id="totalHoy">10</div><div class="lbl">Total hoy</div></div>
+    <div class="stat"><div class="num green" id="entregados">3</div><div class="lbl">Entregados</div></div>
+    <div class="stat"><div class="num amber" id="pendientes">7</div><div class="lbl">Pendientes</div></div>
+  </div>
+
+  <!-- MAPA -->
+  <div class="map-section">
+    <div class="map-header">
+      <h3>🗺️ Ruta optimizada del día</h3>
+      <div class="map-toggle">
+        <button class="active" onclick="toggleMapa(this,'ruta')">Ruta</button>
+        <button onclick="toggleMapa(this,'zonas')">Zonas</button>
+      </div>
+    </div>
+    <div id="mapa"></div>
+    <div class="map-leyenda">
+      <div class="leyenda-item"><div class="leyenda-dot" style="background:#22C55E"></div>Zona A – La Serena</div>
+      <div class="leyenda-item"><div class="leyenda-dot" style="background:#3B82F6"></div>Zona B – Coquimbo</div>
+      <div class="leyenda-item"><div class="leyenda-dot" style="background:#8B5CF6"></div>Zona C – Las Compañías</div>
+    </div>
+  </div>
+
+  <div id="lista-pedidos"></div>
+
+  <div class="refresh-btn" onclick="cargarPedidos()">🔄 Actualizar pedidos</div>
+
+  <div class="bottom-nav">
+    <a class="nav-item" href="index.html"><span class="nav-icon">🛒</span><span class="nav-lbl">Pedidos</span></a>
+    <a class="nav-item active" href="matias.html"><span class="nav-icon">🗺️</span><span class="nav-lbl">Mi ruta</span></a>
+    <a class="nav-item" href="dashboard.html"><span class="nav-icon">📊</span><span class="nav-lbl">Dashboard</span></a>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ Entrega marcada</div>
+
+<script>
+/**
+ * perfil.js — compartido por index.html, matias.html y dashboard.html
+ * Maneja foto de perfil y nombre en localStorage
+ */
+
+const PERFIL_KEY = 'ruta_perfil';
+
+function getPerfil() {
+  try { return JSON.parse(localStorage.getItem(PERFIL_KEY)) || null; }
+  catch { return null; }
+}
+
+function setPerfil(data) {
+  localStorage.setItem(PERFIL_KEY, JSON.stringify(data));
+}
+
+/** Inyecta el avatar en todos los elementos .avatar-btn de la página */
+function aplicarAvatar() {
+  const perfil = getPerfil();
+  document.querySelectorAll('.avatar-btn').forEach(el => {
+    if (perfil?.foto) {
+      el.innerHTML = `<img src="${perfil.foto}" alt="Perfil"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else if (perfil?.nombre) {
+      const iniciales = perfil.nombre.trim().split(' ')
+        .map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      el.innerHTML = `<span style="font-size:12px;font-weight:700;color:#fff;">${iniciales}</span>`;
+      el.style.background = '#22C55E';
+    }
+  });
+}
+
+/** Abre el modal de perfil */
+function abrirModalPerfil() {
+  document.getElementById('modal-perfil')?.remove();
+
+  const perfil = getPerfil();
+  const modal = document.createElement('div');
+  modal.id = 'modal-perfil';
+  modal.innerHTML = `
+    <div id="modal-overlay" style="
+      position:fixed;inset:0;background:rgba(0,0,0,0.6);
+      z-index:1000;display:flex;align-items:center;justify-content:center;
+      padding:20px;">
+      <div style="
+        background:#fff;border-radius:20px;padding:28px 24px;
+        width:100%;max-width:360px;font-family:'Inter',sans-serif;">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <h2 style="font-size:17px;font-weight:700;color:#0F172A;">Mi perfil</h2>
+          <button onclick="document.getElementById('modal-perfil').remove()"
+            style="border:none;background:none;font-size:20px;cursor:pointer;color:#94A3B8;">✕</button>
+        </div>
+
+        <!-- Preview foto -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:20px;">
+          <div id="preview-avatar" style="
+            width:80px;height:80px;border-radius:50%;
+            background:#E2E8F0;display:flex;align-items:center;
+            justify-content:center;overflow:hidden;font-size:32px;
+            border:3px solid #22C55E;">
+            ${perfil?.foto
+              ? `<img src="${perfil.foto}" style="width:100%;height:100%;object-fit:cover;">`
+              : perfil?.nombre
+                ? `<span style="font-size:22px;font-weight:700;color:#fff;background:#22C55E;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                    ${perfil.nombre.trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}
+                   </span>`
+                : '🧑'}
+          </div>
+          <label style="
+            background:#F0FDF4;border:1.5px dashed #22C55E;
+            border-radius:10px;padding:8px 16px;font-size:13px;
+            font-weight:500;color:#16A34A;cursor:pointer;">
+            📷 Subir foto
+            <input type="file" accept="image/*" id="input-foto"
+              style="display:none;" onchange="previsualizarFoto(this)">
+          </label>
+        </div>
+
+        <!-- Nombre -->
+        <div style="margin-bottom:16px;">
+          <label style="font-size:12px;font-weight:500;color:#64748B;display:block;margin-bottom:6px;">
+            Nombre
+          </label>
+          <input id="input-nombre" type="text" value="${perfil?.nombre || ''}"
+            placeholder="Ej. Matías Rodríguez"
+            style="width:100%;border:1.5px solid #E2E8F0;border-radius:10px;
+              padding:10px 14px;font-size:14px;font-family:'Inter',sans-serif;
+              outline:none;color:#0F172A;"
+            onfocus="this.style.borderColor='#22C55E'"
+            onblur="this.style.borderColor='#E2E8F0'">
+        </div>
+
+        <!-- Botón guardar -->
+        <button onclick="guardarPerfil()" style="
+          width:100%;background:#22C55E;color:#fff;border:none;
+          border-radius:12px;padding:13px;font-size:14px;font-weight:600;
+          font-family:'Inter',sans-serif;cursor:pointer;">
+          Guardar cambios
+        </button>
+
+        ${perfil ? `
+        <button onclick="eliminarPerfil()" style="
+          width:100%;background:none;border:none;margin-top:10px;
+          font-size:12px;color:#EF4444;cursor:pointer;font-family:'Inter',sans-serif;">
+          Eliminar foto de perfil
+        </button>` : ''}
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  // Cerrar al hacer clic en overlay
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay'))
+      modal.remove();
+  });
+}
+
+function previsualizarFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('preview-avatar').innerHTML =
+      `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+    // Guardar temporalmente
+    window._fotoTemporal = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function guardarPerfil() {
+  const nombre = document.getElementById('input-nombre').value.trim();
+  const foto   = window._fotoTemporal || getPerfil()?.foto || null;
+  if (!nombre && !foto) {
+    alert('Ingresa al menos tu nombre.');
+    return;
+  }
+  setPerfil({ nombre, foto });
+  window._fotoTemporal = null;
+  document.getElementById('modal-perfil').remove();
+  aplicarAvatar();
+}
+
+function eliminarPerfil() {
+  localStorage.removeItem(PERFIL_KEY);
+  window._fotoTemporal = null;
+  document.getElementById('modal-perfil').remove();
+  aplicarAvatar();
+}
+
+/** Si es primera vez, muestra el modal automáticamente */
+function iniciarPerfil(esPrimerUso = false) {
+  aplicarAvatar();
+  if (esPrimerUso && !getPerfil()) {
+    setTimeout(abrirModalPerfil, 600);
+  }
+}
+
+</script>
+<script>
+// ── Datos ────────────────────────────────────────────────────
+const zonaCfg = {
+  1: { nombre: 'Zona A – Centro La Serena', cls: 'zona-a', dot: '#22C55E', color: '#22C55E' },
+  2: { nombre: 'Zona B – Coquimbo',         cls: 'zona-b', dot: '#3B82F6', color: '#3B82F6' },
+  3: { nombre: 'Zona C – Las Compañías',    cls: 'zona-c', dot: '#8B5CF6', color: '#8B5CF6' }
+};
+
+// Coordenadas reales de La Serena / Coquimbo
+const pedidosMock = [
+  { id:204, cliente:'Alejandro Ramos',  direccion:'Av. Francisco de Aguirre 485, La Serena',  zona_id:1, estado:'entregado', lat:-29.9027, lng:-71.2519 },
+  { id:205, cliente:'Sofía Méndez',     direccion:'Calle Balmaceda 320, La Serena',           zona_id:1, estado:'entregado', lat:-29.9063, lng:-71.2489 },
+  { id:206, cliente:'Juan Torres',      direccion:'Av. del Mar 1200, La Serena',              zona_id:1, estado:'en_ruta',   lat:-29.9120, lng:-71.2618 },
+  { id:207, cliente:'Ana Castillo',     direccion:'Calle Colón 560, La Serena',               zona_id:1, estado:'pendiente', lat:-29.9045, lng:-71.2543 },
+  { id:208, cliente:'Diego Morales',    direccion:'Av. Cuatro Esquinas 780, La Serena',       zona_id:1, estado:'pendiente', lat:-29.8980, lng:-71.2472 },
+  { id:211, cliente:'Carlos Martínez',  direccion:'Av. Costanera 950, Coquimbo',              zona_id:2, estado:'entregado', lat:-29.9563, lng:-71.3435 },
+  { id:212, cliente:'Pedro Soto',       direccion:'Calle Aldunate 430, Coquimbo',             zona_id:2, estado:'pendiente', lat:-29.9523, lng:-71.3389 },
+  { id:213, cliente:'Valentina Cruz',   direccion:'Av. Borgoño 1100, Coquimbo',               zona_id:2, estado:'pendiente', lat:-29.9487, lng:-71.3312 },
+  { id:215, cliente:'Marina López',     direccion:'Calle Los Aromos 234, Las Compañías',      zona_id:3, estado:'en_ruta',   lat:-29.8750, lng:-71.2380 },
+  { id:216, cliente:'Lucía Vargas',     direccion:'Pasaje Las Flores 88, Las Compañías',      zona_id:3, estado:'pendiente', lat:-29.8695, lng:-71.2340 }
+];
+
+let pedidos = [...pedidosMock];
+let mapa = null;
+let capas = [];
+
+// ── Mapa ────────────────────────────────────────────────────
+function iniciarMapa() {
+  // Centro entre La Serena y Coquimbo
+  mapa = L.map('mapa', { zoomControl: true, scrollWheelZoom: false })
+    .setView([-29.9200, -71.2900], 12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+  }).addTo(mapa);
+
+  // Crítico: fuerza a Leaflet a recalcular tamaño del contenedor
+  setTimeout(() => {
+    mapa.invalidateSize();
+    renderizarMapa();
+  }, 100);
+}
+
+function limpiarCapas() {
+  capas.forEach(c => mapa.removeLayer(c));
+  capas = [];
+}
+
+function renderizarMapa() {
+  limpiarCapas();
+  const pendientes = pedidos.filter(p => p.estado !== 'entregado' && p.lat);
+  const todos      = pedidos.filter(p => p.lat);
+
+  // Dibujar línea de ruta entre pendientes en orden
+  if (pendientes.length > 1) {
+    const coords = pendientes.map(p => [p.lat, p.lng]);
+    const linea  = L.polyline(coords, {
+      color: '#22C55E', weight: 3,
+      opacity: 0.7, dashArray: '8 6'
+    }).addTo(mapa);
+    capas.push(linea);
+  }
+
+  // Marcadores numerados
+  let orden = 1;
+  todos.forEach(p => {
+    const z          = zonaCfg[p.zona_id];
+    const entregado  = p.estado === 'entregado';
+    const num        = entregado ? '✓' : orden++;
+    const bgColor    = entregado ? '#94A3B8' : z.color;
+    const iconHtml   = `
+      <div style="
+        width:28px;height:28px;border-radius:50%;
+        background:${bgColor};color:#fff;
+        display:flex;align-items:center;justify-content:center;
+        font-size:${entregado?'13':'12'}px;font-weight:700;
+        border:2px solid #fff;
+        box-shadow:0 2px 6px rgba(0,0,0,0.3);
+        font-family:'Inter',sans-serif;">
+        ${num}
+      </div>`;
+
+    const icono = L.divIcon({
+      html: iconHtml, className: '', iconSize: [28, 28], iconAnchor: [14, 14]
+    });
+
+    const marker = L.marker([p.lat, p.lng], { icon: icono })
+      .addTo(mapa)
+      .bindPopup(`
+        <div style="font-family:'Inter',sans-serif;min-width:160px;">
+          <strong style="font-size:13px;">${p.cliente}</strong><br>
+          <span style="font-size:11px;color:#64748B;">${p.direccion}</span><br>
+          <span style="font-size:11px;margin-top:4px;display:block;
+            color:${entregado?'#22C55E':'#F59E0B'};font-weight:600;">
+            ${entregado ? '✓ Entregado' : p.estado === 'en_ruta' ? '🚲 En ruta' : '⏳ Pendiente'}
+          </span>
+        </div>`);
+    capas.push(marker);
+  });
+
+  // Ajustar vista al conjunto de puntos
+  if (todos.length > 0) {
+    const bounds = L.latLngBounds(todos.map(p => [p.lat, p.lng]));
+    mapa.fitBounds(bounds, { padding: [30, 30] });
+  }
+}
+
+function toggleMapa(btn, modo) {
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderizarMapa();
+}
+
+// ── Lista ────────────────────────────────────────────────────
+async function cargarPedidos() {
+  try {
+    const res = await fetch('https://matiasfood.onrender.com/pedidos/hoy');
+    if (res.ok) {
+      const data = await res.json();
+      // Preservar coordenadas del mock si las hay
+      pedidos = data.map(p => {
+        const mock = pedidosMock.find(m => m.id === p.id);
+        return { ...p, lat: mock?.lat, lng: mock?.lng };
+      });
+    }
+  } catch { /* usa mock */ }
+  renderizar();
+  if (mapa) renderizarMapa();
+}
+
+function renderizar() {
+  const entregados = pedidos.filter(p => p.estado === 'entregado').length;
+  const pendientes = pedidos.filter(p => p.estado !== 'entregado').length;
+  document.getElementById('totalHoy').textContent   = pedidos.length;
+  document.getElementById('entregados').textContent = entregados;
+  document.getElementById('pendientes').textContent = pendientes;
+
+  const grupos = {};
+  pedidos.forEach(p => {
+    if (!grupos[p.zona_id]) grupos[p.zona_id] = [];
+    grupos[p.zona_id].push(p);
+  });
+
+  let html = '';
+  Object.entries(grupos).forEach(([zonaId, lista]) => {
+    const z       = zonaCfg[zonaId];
+    const pending = lista.filter(p => p.estado !== 'entregado').length;
+    html += `<div class="zone-section">
+      <div class="zone-header">
+        <div class="zone-name">
+          <div class="zone-dot" style="background:${z.dot}"></div>${z.nombre}
+        </div>
+        <span class="zone-badge ${pending > 0 ? 'badge-pending' : 'badge-done'}">
+          ${pending > 0 ? `${pending} Pendiente${pending > 1 ? 's' : ''}` : 'Completa ✓'}
+        </span>
+      </div>`;
+
+    lista.forEach(p => {
+      const isEntregado = p.estado === 'entregado';
+      const isActivo    = p.estado === 'en_ruta';
+      html += `
+        <div class="order-card ${isEntregado?'delivered':isActivo?'active':''}" id="order-${p.id}">
+          <div class="order-top">
+            <div>
+              <div class="order-id">#${p.id}</div>
+              <div class="order-name">${p.cliente}</div>
+            </div>
+            <span class="zone-pill ${z.cls}">${z.nombre.split('–')[1]?.trim() || z.nombre}</span>
+          </div>
+          <div class="order-address">📍 ${p.direccion}</div>
+          <div class="order-actions">
+            <button class="action-btn" title="Ver en mapa" onclick="verEnMapa(${p.lat},${p.lng})">🗺️</button>
+            <button class="action-btn" title="Llamar">📞</button>
+            ${isEntregado
+              ? `<button class="btn-entregado">✓ Entregado</button>`
+              : `<button class="btn-entregar" onclick="marcarEntregado(${p.id})">✓ Entregado</button>`}
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  });
+
+  document.getElementById('lista-pedidos').innerHTML = html;
+}
+
+function verEnMapa(lat, lng) {
+  if (!mapa || !lat || !lng) return;
+  mapa.setView([lat, lng], 16);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function marcarEntregado(id) {
+  try { await fetch(`https://matiasfood.onrender.com/pedidos/${id}/entregar`, { method: 'PATCH' }); } catch {}
+  const p = pedidos.find(x => x.id === id);
+  if (p) p.estado = 'entregado';
+  renderizar();
+  renderizarMapa();
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ── Init ─────────────────────────────────────────────────────
+iniciarPerfil(false);
+cargarPedidos();
+window.addEventListener('load', iniciarMapa);
+</script>
+</body>
+</html>
