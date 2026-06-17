@@ -80,6 +80,6 @@ Benjamín Gálvez, 21.218.962-6
 
 Joaquín Chaparro, 21.450.787-0
 
-*Ingeniería Comercial, UCN, 2026*
-
 *Sistemas De Información* , *Profesor Boris Bugueño*  
+
+*Ingeniería Comercial, UCN, 2026*
