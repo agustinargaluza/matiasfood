@@ -1,6 +1,6 @@
-# Ruta del Almuerzo 🚲
+# Ruta del Almuerzo 
 **Caso 06: Rutas Enredadas**
-Proyecto final — Sistemas de Información, Ingeniería Comercial UCN
+Proyecto final
 
 ---
 
