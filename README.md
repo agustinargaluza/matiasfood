@@ -70,7 +70,8 @@ Abre directamente en el navegador:
 
 ---
 
-*Integrantes del equipo*
+*Integrantes del equipo:*
+
 Agustín Argaluza, 21.324.727-1
 
 Sofia Laso, 21.217.099-2
