@@ -70,8 +70,11 @@ Abre directamente en el navegador:
 
 ---
 
-## Integrantes del equipo
-*(completar con nombres y RUT)*
+*Integrantes del equipo*
+Agustín Argaluza, 21.324.727-1
+Sofia Laso, 21.217.099-2
+Benjamín Gálvez, 21.218.962-6
+Joaquín Chaparro, 21.450.787-0
 
----
-*UCN — Ingeniería Comercial — 2025*
+*Ingeniería Comercial, UCN, 2026*
+*Sistemas De Información* , *Profesor Boris Bugueño*  
